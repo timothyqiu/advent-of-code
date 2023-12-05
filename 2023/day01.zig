@@ -3,8 +3,8 @@ const std = @import("std");
 pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
 
-    stdout.print("Part One: {}\n", .{try partOne("inputs/day01.txt")});
-    stdout.print("Part Two: {}\n", .{try partTwo("inputs/day01.txt")});
+    try stdout.print("Part One: {}\n", .{try partOne("inputs/day01.txt")});
+    try stdout.print("Part Two: {}\n", .{try partTwo("inputs/day01.txt")});
 }
 
 fn partOne(path: []const u8) !usize {
