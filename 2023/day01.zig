@@ -1,20 +1,21 @@
 const std = @import("std");
 
 pub fn main() !void {
+    const allocator = std.heap.page_allocator;
     const stdout = std.io.getStdOut().writer();
 
-    try stdout.print("Part One: {}\n", .{try partOne("inputs/day01.txt")});
-    try stdout.print("Part Two: {}\n", .{try partTwo("inputs/day01.txt")});
+    const input = try std.fs.cwd().readFileAlloc(allocator, "inputs/day01.txt", 40960);
+    defer allocator.free(input);
+
+    try stdout.print("Part One: {}\n", .{try partOne(input)});
+    try stdout.print("Part Two: {}\n", .{try partTwo(input)});
 }
 
-fn partOne(path: []const u8) !usize {
-    const input = try std.fs.cwd().openFile(path, .{});
-    defer input.close();
-
+fn partOne(input: []const u8) !usize {
     var sum: usize = 0;
 
-    var buffer: [256]u8 = undefined;
-    while (try input.reader().readUntilDelimiterOrEof(&buffer, '\n')) |line| {
+    var line_iter = std.mem.tokenizeScalar(u8, input, '\n');
+    while (line_iter.next()) |line| {
         var first_index: ?usize = null;
         var last_index: ?usize = null;
         for (line, 0..) |c, i| {
@@ -33,10 +34,7 @@ fn partOne(path: []const u8) !usize {
     return sum;
 }
 
-fn partTwo(path: []const u8) !usize {
-    const input = try std.fs.cwd().openFile(path, .{});
-    defer input.close();
-
+fn partTwo(input: []const u8) !usize {
     // from one to nine
     const SPELLS = [_][]const u8{
         "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
@@ -44,8 +42,8 @@ fn partTwo(path: []const u8) !usize {
 
     var sum: usize = 0;
 
-    var buffer: [256]u8 = undefined;
-    while (try input.reader().readUntilDelimiterOrEof(&buffer, '\n')) |line| {
+    var line_iter = std.mem.tokenizeScalar(u8, input, '\n');
+    while (line_iter.next()) |line| {
         const first = search: for (0..line.len) |i| {
             if (std.ascii.isDigit(line[i])) {
                 break line[i] - '0';
@@ -77,9 +75,22 @@ fn partTwo(path: []const u8) !usize {
 }
 
 test "part one" {
-    try std.testing.expectEqual(@as(usize, 142), try partOne("tests/day01-part01.txt"));
+    try std.testing.expectEqual(@as(usize, 142), try partOne(
+        \\1abc2
+        \\pqr3stu8vwx
+        \\a1b2c3d4e5f
+        \\treb7uchet
+    ));
 }
 
 test "part two" {
-    try std.testing.expectEqual(@as(usize, 281), try partTwo("tests/day01-part02.txt"));
+    try std.testing.expectEqual(@as(usize, 281), try partTwo(
+        \\two1nine
+        \\eightwothree
+        \\abcone2threexyz
+        \\xtwone3four
+        \\4nineeightseven2
+        \\zoneight234
+        \\7pqrstsixteen
+    ));
 }

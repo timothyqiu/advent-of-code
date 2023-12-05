@@ -1,11 +1,16 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const expectEqual = std.testing.expectEqual;
 
 pub fn main() !void {
+    const allocator = std.heap.page_allocator;
     const stdout = std.io.getStdOut().writer();
 
-    try stdout.print("Part One: {}\n", .{try partOne(std.heap.page_allocator, "inputs/day03.txt")});
-    try stdout.print("Part Two: {}\n", .{try partTwo(std.heap.page_allocator, "inputs/day03.txt")});
+    const input = try std.fs.cwd().readFileAlloc(allocator, "inputs/day03.txt", 40960);
+    defer allocator.free(input);
+
+    try stdout.print("Part One: {}\n", .{try partOne(allocator, input)});
+    try stdout.print("Part Two: {}\n", .{try partTwo(allocator, input)});
 }
 
 const NumberRect = struct {
@@ -17,19 +22,16 @@ const SymbolPoint = struct {
     column: usize,
 };
 
-fn partOne(allocator: Allocator, path: []const u8) !usize {
+fn partOne(allocator: Allocator, input: []const u8) !usize {
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
     const arena_allocator = arena.allocator();
 
-    const input = try std.fs.cwd().openFile(path, .{});
-    defer input.close();
-
     var numbers = std.ArrayList(std.ArrayList(NumberRect)).init(arena_allocator);
     var symbols = std.ArrayList(std.ArrayList(SymbolPoint)).init(arena_allocator);
 
-    var buffer: [256]u8 = undefined;
-    while (try input.reader().readUntilDelimiterOrEof(&buffer, '\n')) |line| {
+    var line_iter = std.mem.tokenizeScalar(u8, input, '\n');
+    while (line_iter.next()) |line| {
         try numbers.append(std.ArrayList(NumberRect).init(arena_allocator));
         try symbols.append(std.ArrayList(SymbolPoint).init(arena_allocator));
 
@@ -99,19 +101,16 @@ fn partOne(allocator: Allocator, path: []const u8) !usize {
     return sum;
 }
 
-fn partTwo(allocator: Allocator, path: []const u8) !usize {
+fn partTwo(allocator: Allocator, input: []const u8) !usize {
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
     const arena_allocator = arena.allocator();
 
-    const input = try std.fs.cwd().openFile(path, .{});
-    defer input.close();
-
     var numbers = std.ArrayList(std.ArrayList(NumberRect)).init(arena_allocator);
     var symbols = std.ArrayList(std.ArrayList(SymbolPoint)).init(arena_allocator);
 
-    var buffer: [256]u8 = undefined;
-    while (try input.reader().readUntilDelimiterOrEof(&buffer, '\n')) |line| {
+    var line_iter = std.mem.tokenizeScalar(u8, input, '\n');
+    while (line_iter.next()) |line| {
         try numbers.append(std.ArrayList(NumberRect).init(arena_allocator));
         try symbols.append(std.ArrayList(SymbolPoint).init(arena_allocator));
 
@@ -200,10 +199,20 @@ fn partTwo(allocator: Allocator, path: []const u8) !usize {
     return sum;
 }
 
-test "part one" {
-    try std.testing.expectEqual(@as(usize, 4361), try partOne(std.testing.allocator, "tests/day03.txt"));
-}
-
-test "part two" {
-    try std.testing.expectEqual(@as(usize, 467835), try partTwo(std.testing.allocator, "tests/day03.txt"));
+test {
+    const allocator = std.testing.allocator;
+    const input =
+        \\467..114..
+        \\...*......
+        \\..35..633.
+        \\......#...
+        \\617*......
+        \\.....+.58.
+        \\..592.....
+        \\......755.
+        \\...$.*....
+        \\.664.598..
+    ;
+    try expectEqual(@as(usize, 4361), try partOne(allocator, input));
+    try expectEqual(@as(usize, 467835), try partTwo(allocator, input));
 }

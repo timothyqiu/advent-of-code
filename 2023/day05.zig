@@ -1,30 +1,24 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const expectEqual = std.testing.expectEqual;
 
 pub fn main() !void {
+    const allocator = std.heap.page_allocator;
     const stdout = std.io.getStdOut().writer();
 
-    try stdout.print("Part One: {}\n", .{try partOne(std.heap.page_allocator, "inputs/day05.txt")});
-    try stdout.print("Part Two: {}\n", .{try partTwo(std.heap.page_allocator, "inputs/day05.txt")});
+    const input = try std.fs.cwd().readFileAlloc(allocator, "inputs/day05.txt", 40960);
+    defer allocator.free(input);
+
+    try stdout.print("Part One: {}\n", .{try partOne(allocator, input)});
+    try stdout.print("Part Two: {}\n", .{try partTwo(allocator, input)});
 }
 
-fn partOne(allocator: Allocator, path: []const u8) !usize {
-    var arena = std.heap.ArenaAllocator.init(allocator);
-    defer arena.deinit();
-    const arena_allocator = arena.allocator();
-
-    const input = try std.fs.cwd().openFile(path, .{});
-    defer input.close();
-
-    var workspace = std.ArrayList(usize).init(arena_allocator);
+fn partOne(allocator: Allocator, input: []const u8) !usize {
+    var workspace = std.ArrayList(usize).init(allocator);
     defer workspace.deinit();
 
-    var mapped = std.ArrayList(bool).init(arena_allocator);
-    defer mapped.deinit();
-
-    var buffer: [256]u8 = undefined;
-
-    if (try input.reader().readUntilDelimiterOrEof(&buffer, '\n')) |line| {
+    var line_iter = std.mem.tokenizeScalar(u8, input, '\n');
+    if (line_iter.next()) |line| {
         std.debug.assert(std.mem.startsWith(u8, line, "seeds: "));
         var seed_iter = std.mem.tokenizeScalar(u8, line[7..], ' ');
         while (seed_iter.next()) |token| {
@@ -32,20 +26,13 @@ fn partOne(allocator: Allocator, path: []const u8) !usize {
         }
     } else unreachable;
 
+    var mapped = std.ArrayList(bool).init(allocator);
+    defer mapped.deinit();
     try mapped.resize(workspace.items.len);
 
-    var skip_next = false;
-    while (try input.reader().readUntilDelimiterOrEof(&buffer, '\n')) |line| {
-        if (skip_next) {
-            std.debug.assert(std.mem.endsWith(u8, line, " map:"));
-            skip_next = false;
-            continue;
-        }
-        if (line.len == 0) {
-            for (mapped.items) |*item| {
-                item.* = false;
-            }
-            skip_next = true;
+    while (line_iter.next()) |line| {
+        if (std.mem.endsWith(u8, line, " map:")) {
+            @memset(mapped.items, false);
             continue;
         }
 
@@ -76,28 +63,17 @@ fn partOne(allocator: Allocator, path: []const u8) !usize {
     return lowest;
 }
 
-fn partTwo(allocator: Allocator, path: []const u8) !usize {
-    var arena = std.heap.ArenaAllocator.init(allocator);
-    defer arena.deinit();
-    const arena_allocator = arena.allocator();
-
-    const input = try std.fs.cwd().openFile(path, .{});
-    defer input.close();
-
+fn partTwo(allocator: Allocator, input: []const u8) !usize {
     const SeedRange = struct {
         src: usize,
         len: usize,
     };
 
-    var workspace = std.ArrayList(SeedRange).init(arena_allocator);
+    var workspace = std.ArrayList(SeedRange).init(allocator);
     defer workspace.deinit();
 
-    var mapped = std.ArrayList(bool).init(arena_allocator);
-    defer mapped.deinit();
-
-    var buffer: [256]u8 = undefined;
-
-    if (try input.reader().readUntilDelimiterOrEof(&buffer, '\n')) |line| {
+    var line_iter = std.mem.tokenizeScalar(u8, input, '\n');
+    if (line_iter.next()) |line| {
         std.debug.assert(std.mem.startsWith(u8, line, "seeds: "));
         var seed_iter = std.mem.tokenizeScalar(u8, line[7..], ' ');
 
@@ -108,20 +84,13 @@ fn partTwo(allocator: Allocator, path: []const u8) !usize {
         }
     } else unreachable;
 
+    var mapped = std.ArrayList(bool).init(allocator);
+    defer mapped.deinit();
     try mapped.resize(workspace.items.len);
 
-    var skip_next = false;
-    while (try input.reader().readUntilDelimiterOrEof(&buffer, '\n')) |line| {
-        if (skip_next) {
-            std.debug.assert(std.mem.endsWith(u8, line, " map:"));
-            skip_next = false;
-            continue;
-        }
-        if (line.len == 0) {
-            for (mapped.items) |*item| {
-                item.* = false;
-            }
-            skip_next = true;
+    while (line_iter.next()) |line| {
+        if (std.mem.endsWith(u8, line, " map:")) {
+            @memset(mapped.items, false);
             continue;
         }
 
@@ -165,9 +134,7 @@ fn partTwo(allocator: Allocator, path: []const u8) !usize {
         if (new_ranges.items.len > 0) {
             try workspace.appendSlice(new_ranges.items);
             try mapped.resize(workspace.items.len);
-            for (mapped.items[mapped.items.len - new_ranges.items.len ..]) |*value| {
-                value.* = false;
-            }
+            @memset(mapped.items[mapped.items.len - new_ranges.items.len ..], false);
         }
     }
 
@@ -184,10 +151,43 @@ fn partTwo(allocator: Allocator, path: []const u8) !usize {
     return lowest;
 }
 
-test "part one" {
-    try std.testing.expectEqual(@as(usize, 35), try partOne(std.testing.allocator, "tests/day05.txt"));
-}
-
-test "part two" {
-    try std.testing.expectEqual(@as(usize, 46), try partTwo(std.testing.allocator, "tests/day05.txt"));
+test {
+    const allocator = std.testing.allocator;
+    const input =
+        \\seeds: 79 14 55 13
+        \\
+        \\seed-to-soil map:
+        \\50 98 2
+        \\52 50 48
+        \\
+        \\soil-to-fertilizer map:
+        \\0 15 37
+        \\37 52 2
+        \\39 0 15
+        \\
+        \\fertilizer-to-water map:
+        \\49 53 8
+        \\0 11 42
+        \\42 0 7
+        \\57 7 4
+        \\
+        \\water-to-light map:
+        \\88 18 7
+        \\18 25 70
+        \\
+        \\light-to-temperature map:
+        \\45 77 23
+        \\81 45 19
+        \\68 64 13
+        \\
+        \\temperature-to-humidity map:
+        \\0 69 1
+        \\1 0 69
+        \\
+        \\humidity-to-location map:
+        \\60 56 37
+        \\56 93 4
+    ;
+    try expectEqual(@as(usize, 35), try partOne(allocator, input));
+    try expectEqual(@as(usize, 46), try partTwo(allocator, input));
 }
