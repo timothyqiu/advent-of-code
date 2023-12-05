@@ -137,12 +137,20 @@ fn getCircuit(allocator: Allocator, connections: ConnectionMap, wire: []const u8
 
 test {
     const allocator = std.testing.allocator;
-
-    const content = try std.fs.cwd().readFileAlloc(allocator, "tests/day07.txt", 10240);
-    defer allocator.free(content);
+    const content =
+        \\123 -> x
+        \\456 -> y
+        \\x AND y -> d
+        \\x OR y -> e
+        \\x LSHIFT 2 -> f
+        \\y RSHIFT 2 -> g
+        \\NOT x -> h
+        \\NOT y -> i
+    ;
 
     var connections = try buildConnectionMap(allocator, content);
     defer connections.deinit();
 
+    try expectEqual(@as(u16, 72), try getCircuit(allocator, connections, "d"));
     try expectEqual(@as(u16, 65079), try getCircuit(allocator, connections, "i"));
 }

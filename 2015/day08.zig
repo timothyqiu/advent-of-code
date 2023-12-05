@@ -83,10 +83,12 @@ fn partTwo(input: []const u8) !usize {
 }
 
 test {
-    const allocator = std.testing.allocator;
-
-    const content = try std.fs.cwd().readFileAlloc(allocator, "tests/day08.txt", 10240);
-    defer allocator.free(content);
+    const content =
+        \\""
+        \\"abc"
+        \\"aaa\"aaa"
+        \\"\x27"
+    ;
 
     try std.testing.expectEqual(@as(usize, 12), try partOne(content));
     try std.testing.expectEqual(@as(usize, 19), try partTwo(content));
