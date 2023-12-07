@@ -170,23 +170,40 @@ const Type = enum {
     }
 
     fn buildPartTwo(hand: *const [5]u8) Type {
-        var best = Type.high_card;
-
         var buffer: [5]u8 = undefined;
-        for ("AKQT98765432") |replacement| {
-            @memcpy(&buffer, hand);
-            for (0..5) |i| {
-                if (buffer[i] == 'J') {
-                    buffer[i] = replacement;
+        @memcpy(&buffer, hand);
+
+        // Replace wildcard J with the most frequent card.
+        std.sort.heap(u8, &buffer, {}, std.sort.asc(u8));
+
+        var replacement: u8 = undefined;
+        var longest_streak: usize = 0;
+
+        var last_card = buffer[0];
+        var current_streak: usize = 1;
+
+        for (buffer[1..]) |c| {
+            if (c == last_card) {
+                current_streak += 1;
+            } else {
+                if (last_card != 'J' and current_streak > longest_streak) {
+                    longest_streak = current_streak;
+                    replacement = last_card;
                 }
+                current_streak = 1;
             }
-            const current = Type.buildPartOne(&buffer);
-            if (@intFromEnum(current) > @intFromEnum(best)) {
-                best = current;
-            }
+            last_card = c;
+        }
+        if (last_card != 'J' and current_streak > longest_streak) {
+            replacement = last_card;
         }
 
-        return best;
+        for (buffer, 0..) |c, i| {
+            if (c == 'J') {
+                buffer[i] = replacement;
+            }
+        }
+        return Type.buildPartOne(&buffer);
     }
 };
 
