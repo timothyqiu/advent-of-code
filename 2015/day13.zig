@@ -104,13 +104,9 @@ const Survey = struct {
             while (i < self.people.count()) {
                 if (c.items[i] < i) {
                     if (i % 2 == 0) {
-                        const tmp = A.items[0];
-                        A.items[0] = A.items[i];
-                        A.items[i] = tmp;
+                        std.mem.swap(u64, &A.items[0], &A.items[i]);
                     } else {
-                        const tmp = A.items[c.items[i]];
-                        A.items[c.items[i]] = A.items[i];
-                        A.items[i] = tmp;
+                        std.mem.swap(u64, &A.items[c.items[i]], &A.items[i]);
                     }
 
                     optimal = @max(optimal, self.getTotalChange(A.items));
